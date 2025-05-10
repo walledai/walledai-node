@@ -23,10 +23,13 @@ jobs:
         run: |
           npm ci
 
-      - name: Run tests
+      - name: Run tests (if defined)
         run: |
-          npm test
-        if: success()
+          if grep -q "\"test\":" package.json; then
+            npm test
+          else
+            echo "No test script found in package.json, skipping tests"
+          fi
 
       - name: Determine version bump type
         id: bump_type
