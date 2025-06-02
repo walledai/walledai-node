@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { GuardrailOptions, GuardRailResponse } from './types/guardrail';
+import { GuardrailOptions, GuardRailResponse } from './types/guardrail.js';
+import { basUrl } from './constants.js';
 
 
 
@@ -33,7 +34,7 @@ export class WalledProtect {
    * @returns A promise resolving to the API response or an error object
      */
   async guardrail(options: GuardrailOptions): Promise<GuardRailResponse> {
-    const url =  'https://idy5alt3vg.execute-api.ap-southeast-1.amazonaws.com/Development/guardrail/moderate';
+    const url =  `${basUrl}/guardrail/moderate`;
 
     const payload = {
       text: options.text,

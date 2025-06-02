@@ -20,24 +20,22 @@ yarn add walledai
 
 ### ➕ Import the SDK
 
-#### ✅ ES Module (ESM)
-
 ```ts
-import { WalledProtect } from 'walledai';
-```
-
-#### ✅ CommonJS
-
-```js
-const { WalledProtect } = require('walledai');
+import { WalledProtect, PII } from 'walledai';
 ```
 
 ---
 
-### 🛠️ Initialize the Client
+## 🛠️ Initialize the Clients
 
 ```ts
-const client = new WalledProtect({
+const guardrailClient = new WalledProtect({
+  apiKey: 'your_api_key_here',
+  retries: 3,         // Optional, defaults to 3
+  timeout: 20000      // Optional, defaults to 20000 ms
+});
+
+const piiClient = new PII({
   apiKey: 'your_api_key_here',
   retries: 3,         // Optional, defaults to 3
   timeout: 20000      // Optional, defaults to 20000 ms
@@ -46,10 +44,12 @@ const client = new WalledProtect({
 
 ---
 
-### 🧪 Guardrail Check
+## 🧪 Guardrail Check
+
+*The Guardrail feature analyzes input text for safety, compliance, greetings, and PII, helping you moderate and filter user content according to your requirements.*
 
 ```ts
-const response = await client.guardrail({
+const response = await guardrailClient.guardrail({
   text: "Hello, how are you?",
   greetingsList: ["generalgreetings"],
   textType: "prompt", // Optional
@@ -61,19 +61,7 @@ console.log(response);
 
 ---
 
-## ⚙️ Parameters
-
-### `new WalledProtect(config)`
-
-| Parameter | Type     | Required | Description |
-|-----------|----------|----------|-------------|
-| `apiKey`  | `string` | ✅ Yes   | API key obtained from Walled AI |
-| `retries` | `number` | ❌ No    | Number of retry attempts on failure (default: `3`) |
-| `timeout` | `number` | ❌ No    | Request timeout in milliseconds (default: `20000`) |
-
----
-
-### `guardrail(options)`
+### Guardrail Parameters
 
 | Parameter            | Type        | Required | Description |
 |----------------------|-------------|----------|-------------|
@@ -84,9 +72,7 @@ console.log(response);
 
 ---
 
-## ✅ Successful Response
-
-The response from `guardrail()` is a plain object:
+### Guardrail Successful Response
 
 ```json
 {
@@ -99,6 +85,56 @@ The response from `guardrail()` is a plain object:
   }
 }
 ```
+
+---
+
+## 🕵️‍♂️ PII Masking
+
+*The PII feature detects and masks personally identifiable information (PII) such as emails, phone numbers, and more, replacing them with placeholders and providing a mapping for reference.*
+
+### Usage
+
+```ts
+const piiResponse = await piiClient.pii("My email is john.doe@example.com and my phone is 123-456-7890.");
+
+console.log(piiResponse);
+```
+
+### PII Parameters
+
+| Parameter | Type     | Required | Description |
+|-----------|----------|----------|-------------|
+| `text`    | `string` | ✅ Yes   | Input text to process for PII masking |
+
+### PII Successful Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "remark": "PII masked successfully",
+    "input": "My email is john.doe@example.com and my phone is 123-456-7890.",
+    "masked_text": "My email is PNA2 and my phone is PNA1.",
+    "mapping": {
+      "PNA2": "john.doe@example.com",
+      "PNA1": "123-456-7890"
+    }
+  }
+}
+```
+
+---
+
+## ⚙️ Common Parameters
+
+Both `WalledProtect` and `PII` accept the following config:
+
+| Parameter | Type     | Required | Description |
+|-----------|----------|----------|-------------|
+| `apiKey`  | `string` | ✅ Yes   | API key obtained from Walled AI |
+| `retries` | `number` | ❌ No    | Number of retry attempts on failure (default: `3`) |
+| `timeout` | `number` | ❌ No    | Request timeout in milliseconds (default: `20000`) |
 
 ---
 

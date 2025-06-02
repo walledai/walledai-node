@@ -1,1 +1,0 @@
-export { WalledProtect } from './guardrail';
