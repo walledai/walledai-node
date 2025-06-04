@@ -1,2 +1,3 @@
-export  {WalledProtect} from './guardrail';
+export  {WalledProtect} from './guardrail.js';
+export {PII} from './pii.js';
 
