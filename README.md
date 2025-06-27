@@ -53,7 +53,9 @@ const response = await guardrailClient.guardrail({
   text: "Hello, how are you?",
   greetingsList: ["generalgreetings"],
   textType: "prompt", // Optional
-  genericSafetyCheck: true // Optional
+  genericSafetyCheck: true, // Optional
+  complianceList: ["GDPR"], // Optional
+  piiList: ["Email Id", "Contact No"] // Optional, see allowed values below
 });
 
 console.log(response);
@@ -69,6 +71,17 @@ console.log(response);
 | `greetingsList`      | `string[]`  | ❌ No    | List of greeting types (e.g. `["generalgreetings"]`) |
 | `textType`           | `string`    | ❌ No    | Type of text (`"prompt"` by default) |
 | `genericSafetyCheck` | `boolean`   | ❌ No    | Enable general safety filtering (defaults to `true`) |
+| `complianceList`     | `string[]`  | ❌ No    | List of compliance categories to check (e.g. `["GDPR"]`) |
+| `piiList`            | `string[]`  | ❌ No    | List of PII categories to check (see allowed values below) |
+
+**Allowed values for `piiList`:**
+- `"Person's Name"`
+- `"Address"`
+- `"Email Id"`
+- `"Contact No"`
+- `"Date Of Birth"`
+- `"Unique Id"`
+- `"Financial Data"`
 
 ---
 
