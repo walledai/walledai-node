@@ -1,2 +1,2 @@
-const basUrl='https://idy5alt3vg.execute-api.ap-southeast-1.amazonaws.com/Development'
+const basUrl='https://services.walled.ai/v1'
 export { basUrl}
