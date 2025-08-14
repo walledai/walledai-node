@@ -1,6 +1,6 @@
 # Walled AI SDK (Node.js)
 
-A TypeScript/JavaScript SDK for interacting with Walled AI's Guardrail API.
+A TypeScript/JavaScript SDK for interacting with Walled AI's Guardrail and PII Redaction APIs.
 
 ---
 
@@ -16,65 +16,110 @@ yarn add walledai
 
 ---
 
-## 🚀 Usage
+## 🚀 Quick Start
 
-### ➕ Import the SDK
+### Import the SDK
 
 ```ts
-import { WalledProtect, PII } from 'walledai';
+import { WalledProtect, WalledRedact } from 'walledai';
 ```
 
----
-
-## 🛠️ Initialize the Clients
+### Initialize the Clients
 
 ```ts
-const guardrailClient = new WalledProtect({
+// Initialize WalledProtect for content moderation and safety checks
+const walledProtect = new WalledProtect({
   apiKey: 'your_api_key_here',
   retries: 3,         // Optional, defaults to 3
   timeout: 20000      // Optional, defaults to 20000 ms
 });
 
-const piiClient = new PII({
-  apiKey: 'your_api_key_here',
-  retries: 3,         // Optional, defaults to 3
-  timeout: 20000      // Optional, defaults to 20000 ms
-});
+// Initialize WalledRedact for PII detection and masking
+const walledRedact = new WalledRedact(
+  'your_api_key_here',
+  2,                  // Optional retries, defaults to 2
+  20000               // Optional timeout, defaults to 20000 ms
+);
 ```
 
 ---
 
-## 🧪 Guardrail Check
+## 🛡️ WalledProtect - Content Moderation & Safety
 
-*The Guardrail feature analyzes input text for safety, compliance, greetings, and PII, helping you moderate and filter user content according to your requirements.*
+The `WalledProtect` class provides comprehensive content moderation capabilities including safety checks, compliance validation, PII detection, and greeting analysis.
+
+### Basic Content Analysis
 
 ```ts
-const response = await guardrailClient.guardrail({
-  text: "Hello, how are you?",
-  greetingsList: ["generalgreetings"],
-  textType: "prompt", // Optional
-  genericSafetyCheck: true, // Optional
-  complianceList: ["GDPR"], // Optional
-  piiList: ["Email Id", "Contact No"] // Optional, see allowed values below
+const response = await walledProtect.guard({
+  text: "Hello, how are you? My email is john@example.com",
+  greetingsList: ["Casual & Friendly", "Professional & Polite"],
+  genericSafetyCheck: true,
+  complianceList: ["GDPR"],
+  piiList: ["Email Id", "Contact No"]
 });
 
 console.log(response);
 ```
 
----
+### Multi-turn Conversation Analysis
 
-### Guardrail Parameters
+```ts
+const conversation = [
+  { role: "user", content: "What's your name?" },
+  { role: "assistant", content: "I'm an AI assistant. How can I help you?" }
+];
 
-| Parameter            | Type        | Required | Description |
-|----------------------|-------------|----------|-------------|
-| `text`               | `string`    | ✅ Yes   | Input text to analyze |
-| `greetingsList`      | `string[]`  | ❌ No    | List of greeting types (e.g. `["generalgreetings"]`) |
-| `textType`           | `string`    | ❌ No    | Type of text (`"prompt"` by default) |
-| `genericSafetyCheck` | `boolean`   | ❌ No    | Enable general safety filtering (defaults to `true`) |
-| `complianceList`     | `string[]`  | ❌ No    | List of compliance categories to check (e.g. `["GDPR"]`) |
-| `piiList`            | `string[]`  | ❌ No    | List of PII categories to check (see allowed values below) |
+const response = await walledProtect.guard({
+  text: conversation,
+  greetingsList: ["Professional & Polite"],
+  genericSafetyCheck: true
+});
+```
 
-**Allowed values for `piiList`:**
+### Batch Evaluation with CSV
+
+For large-scale testing and evaluation:
+
+```ts
+const evalResponse = await walledProtect.eval({
+  groundTruthFilePath: './test-cases.csv',
+  modelOutputFilePath: './results.csv',
+  metricsOutputFilePath: './metrics.csv',
+  concurrencyLimit: 20  // Optional, defaults to 20
+});
+```
+
+**Required CSV Format:**
+```csv
+test_input,compliance_topic,compliance_isOnTopic,Person's Name,Email Id,Casual & Friendly
+"Hello world",GDPR,TRUE,FALSE,FALSE,TRUE
+"My email is test@example.com",GDPR,FALSE,FALSE,TRUE,FALSE
+```
+
+### WalledProtect Parameters
+
+#### Guard Method Parameters
+
+| Parameter            | Type                    | Required | Description |
+|----------------------|-------------------------|----------|-------------|
+| `text`               | `string \| TextInput[]` | ✅ Yes   | Input text or conversation array |
+| `greetingsList`      | `string[]`              | ❌ No    | Greeting types to check (default: `["Casual & Friendly"]`) |
+| `genericSafetyCheck` | `boolean`               | ❌ No    | Enable safety filtering (default: `true`) |
+| `complianceList`     | `string[]`              | ❌ No    | Compliance categories to check |
+| `piiList`            | `PiiType[]`             | ❌ No    | PII categories to detect |
+
+#### Eval Method Parameters
+
+| Parameter              | Type     | Required | Description |
+|------------------------|----------|----------|-------------|
+| `groundTruthFilePath`  | `string` | ✅ Yes   | Path to CSV with test cases |
+| `modelOutputFilePath`  | `string` | ✅ Yes   | Path to save results |
+| `metricsOutputFilePath`| `string` | ✅ Yes   | Path to save metrics |
+| `concurrencyLimit`     | `number` | ❌ No    | Max concurrent requests (default: `20`) |
+
+#### Allowed PII Types
+
 - `"Person's Name"`
 - `"Address"`
 - `"Email Id"`
@@ -83,86 +128,216 @@ console.log(response);
 - `"Unique Id"`
 - `"Financial Data"`
 
----
+#### Allowed Greeting Types
 
-### Guardrail Successful Response
+- `"Casual & Friendly"`
+- `"Professional & Polite"`
+
+### WalledProtect Response Format
 
 ```json
 {
-  "success": true,
+  "status": "success",
+  "code": 200,
   "data": {
-    "safety": [{ "safety": "generic", "isSafe": true, "score": 5 }],
-    "compliance": [],
-    "pii": [],
-    "greetings": [{ "greeting_type": "generalgreetings", "isPresent": true }]
+    "safety": [
+      {
+        "safety": "generic",
+        "isSafe": true,
+        "score": null,
+        "method": "en-safety",
+        "processing_time": 0.18735170364379883,
+        "models_used": ["walled_e_guard_a"]
+      }
+    ],
+    "compliance": [
+      {
+        "topic": "ask about medical",
+        "isOnTopic": false,
+        "error": null
+      }
+    ],
+    "pii": [
+      {
+        "pii_type": "Email Id",
+        "isPresent": false,
+        "error": null
+      }
+    ],
+    "greetings": [
+      {
+        "greeting_type": "Professional & Polite",
+        "isPresent": false,
+        "error": null
+      }
+    ]
   }
 }
 ```
 
 ---
 
-## 🕵️‍♂️ PII Masking
+## 🔒 WalledRedact - PII Detection & Masking
 
-*The PII feature detects and masks personally identifiable information (PII) such as emails, phone numbers, and more, replacing them with placeholders and providing a mapping for reference.*
+The `WalledRedact` class detects and masks personally identifiable information (PII) in text, replacing sensitive data with placeholders.
 
-### Usage
+### Basic PII Masking
 
 ```ts
-const piiResponse = await piiClient.pii("My email is john.doe@example.com and my phone is 123-456-7890.");
+const response = await walledRedact.guard(
+  "My email is john.doe@example.com and my phone is 123-456-7890."
+);
 
-console.log(piiResponse);
+console.log(response);
 ```
 
-### PII Parameters
+### Multi-turn Conversation PII Masking
 
-| Parameter | Type     | Required | Description |
-|-----------|----------|----------|-------------|
-| `text`    | `string` | ✅ Yes   | Input text to process for PII masking |
+```ts
+const conversation = [
+  { role: "user", content: "My email is test@example.com" },
+  { role: "assistant", content: "I'll contact you at that email" }
+];
 
-### PII Successful Response
+const response = await walledRedact.guard(conversation);
+```
+
+### WalledRedact Parameters
+
+| Parameter | Type                    | Required | Description |
+|-----------|-------------------------|----------|-------------|
+| `text`    | `string \| TextInput[]` | ✅ Yes   | Text or conversation to process |
+
+### WalledRedact Response Format
 
 ```json
 {
-  "success": true,
+  "status": "success",
   "data": {
     "success": true,
-    "remark": "PII masked successfully",
-    "input": "My email is john.doe@example.com and my phone is 123-456-7890.",
-    "masked_text": "My email is PNA2 and my phone is PNA1.",
-    "mapping": {
-      "PNA2": "john.doe@example.com",
-      "PNA1": "123-456-7890"
-    }
+    "statusCode": 2001,
+    "remark": "guardrails success type 21",
+    "input": [
+      {
+        "role": "user",
+        "content": "Hi there, can you help me with some information?"
+      },
+      {
+        "role": "assistant",
+        "content": "Of course! What would you like to know?"
+      },
+      {
+        "role": "user",
+        "content": "Can you suggest some healthy habits for daily life?"
+      }
+    ],
+    "masked_text": [
+      {
+        "role": "user",
+        "content": "Hi there, can you help me with some information?"
+      },
+      {
+        "role": "assistant",
+        "content": "Of course! What would you like to know?"
+      },
+      {
+        "role": "user",
+        "content": "Can you suggest some healthy habits for daily life?"
+      }
+    ],
+    "mapping": {},
+    "error": null
   }
 }
 ```
 
 ---
 
-## ⚙️ Common Parameters
+## ⚙️ Configuration Options
 
-Both `WalledProtect` and `PII` accept the following config:
+### WalledProtect Configuration
 
-| Parameter | Type     | Required | Description |
-|-----------|----------|----------|-------------|
-| `apiKey`  | `string` | ✅ Yes   | API key obtained from Walled AI |
-| `retries` | `number` | ❌ No    | Number of retry attempts on failure (default: `3`) |
-| `timeout` | `number` | ❌ No    | Request timeout in milliseconds (default: `20000`) |
+```ts
+const walledProtect = new WalledProtect({
+  apiKey: 'your_api_key_here',
+  retries: 3,         // Number of retry attempts (default: 3)
+  timeout: 20000      // Request timeout in milliseconds (default: 20000)
+});
+```
+
+### WalledRedact Configuration
+
+```ts
+const walledRedact = new WalledRedact(
+  'your_api_key_here',
+  2,                  // Number of retry attempts (default: 2)
+  20000               // Request timeout in milliseconds (default: 20000)
+);
+```
 
 ---
 
-## ❌ Error Response
+## 📊 Batch Evaluation Features
 
-If a request fails after retrying:
+The `eval()` method provides comprehensive batch testing capabilities:
+
+### Features
+- **CSV-based testing**: Load test cases from CSV files
+- **Concurrent processing**: Configurable concurrency limits
+- **Automatic retries**: Built-in retry logic with delays
+- **Metrics generation**: Accuracy, precision, recall, and F1 scores
+- **Dynamic column support**: Automatically detects PII and greeting columns
+
+### Output Files
+1. **Model Output**: Contains predictions for each test case
+2. **Metrics**: Performance metrics for each column (accuracy, precision, recall, F1)
+
+### Example Metrics Output
+```csv
+metrics,accuracy,precision,recall,f1,TP,TN,FP,FN
+compliance_isOnTopic,0.950,0.923,0.857,0.889,12,45,1,2
+Email Id,0.983,1.000,0.800,0.889,8,51,0,2
+Casual & Friendly,0.967,0.909,0.909,0.909,10,48,1,1
+```
+
+---
+
+## ❌ Error Handling
+
+Both classes return consistent error responses:
 
 ```json
 {
-  "success": false,
+  "status": "error",
+  "code": 500,
   "error": "Network error or server failure message"
 }
 ```
 
-> 🔁 The SDK automatically retries requests that fail, up to the number of `retries` configured, with a delay between attempts.
+### Error Handling Features
+- **Automatic retries**: Failed requests are automatically retried
+- **Configurable delays**: 2-3 second delays between retry attempts
+- **Graceful degradation**: Returns error responses instead of throwing exceptions
+- **Detailed logging**: Console logs for debugging retry attempts
+
+---
+
+## 🔄 Legacy Support
+
+For backward compatibility, `WalledProtect` still supports the legacy `guardrail()` method:
+
+```ts
+const response = await walledProtect.guardrail({
+  text: "Hello, how are you?",
+  greetingsList: ["generalgreetings"],
+  textType: "prompt",
+  genericSafetyCheck: true,
+  complianceList: ["GDPR"],
+  piiList: ["Email Id", "Contact No"]
+});
+```
+
+> **Note**: The `guardrail()` method now returns the same response format as the `guard()` method, with `status`, `code`, and `data` fields.
 
 ---
 
