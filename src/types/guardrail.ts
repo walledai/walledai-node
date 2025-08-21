@@ -19,6 +19,10 @@ export interface GuardrailOptions {
 
 export interface GuardRailResponse {
   success: boolean;
+  statusCode:number;
+  message?:string;
+  errorCode?:string
+  details?: any;
   data?: {
     safety?: {
       safety: string;

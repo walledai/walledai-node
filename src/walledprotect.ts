@@ -115,7 +115,7 @@ export class WalledProtect {
         throw new Error(`'pii' must be empty or contain only: ${allowedPii.sort().join(', ')}`);
       }
     }
-
+    let res:any;
     const runAsyncGuard = async (): Promise<GuardRailResponse> => {
       try {
         const response = await this.httpApiCall(
@@ -125,7 +125,7 @@ export class WalledProtect {
           complianceList,
           piiList
         );
-        return { success: true, data: response?.data || {} };
+        return response;
       } catch (error: any) {
         throw error;
       }
@@ -134,7 +134,7 @@ export class WalledProtect {
     // Retry logic
     for (let attempt = 0; attempt < this.retries; attempt++) {
       try {
-        return await runAsyncGuard();
+        res= await runAsyncGuard();
       } catch (error: any) {
         console.log('Failed, error:', error.message);
         console.log('\nRetrying...\n');
@@ -143,12 +143,12 @@ export class WalledProtect {
           await new Promise(resolve => setTimeout(resolve, 2000));
         } else {
           console.log('Reached Maximum No of retries\n');
-          return { success: false, error: error.message };
+          res= error.response.data
         }
       }
     }
 
-    return { success: false, error: 'Unexpected error' };
+    return res;
   }
 
   /**
@@ -516,7 +516,7 @@ export class WalledProtect {
   /**
    * Eval method 
    */
-  async eval(options: EvalOptions): Promise<GuardRailResponse> {
+  async eval(options: EvalOptions): Promise<any> {
     const {
       groundTruthFilePath,
       modelOutputFilePath,
@@ -628,54 +628,54 @@ export class WalledProtect {
   /**
    * Legacy guardrail method for backward compatibility
    */
-  async guardrail(options: GuardrailOptions): Promise<GuardRailResponse> {
-    const url = `${basUrl}/guardrail/moderate`;
+  // async guardrail(options: GuardrailOptions): Promise<GuardRailResponse> {
+  //   const url = `${basUrl}/guardrail/moderate`;
 
-    // Validate piiList if provided
-    if (options.piiList && options.piiList.length > 0) {
-      const invalid = options.piiList.filter(item => !allowedPii.includes(item));
-      if (invalid.length > 0) {
-        throw new Error(
-          `'piiList' must be empty or contain only: ${allowedPii.join(', ')}`
-        );
-      }
-    }
+  //   // Validate piiList if provided
+  //   if (options.piiList && options.piiList.length > 0) {
+  //     const invalid = options.piiList.filter(item => !allowedPii.includes(item));
+  //     if (invalid.length > 0) {
+  //       throw new Error(
+  //         `'piiList' must be empty or contain only: ${allowedPii.join(', ')}`
+  //       );
+  //     }
+  //   }
 
-    const payload = {
-      text: options.text,
-      greetings_list: options.greetingsList || [],
-      text_type: options.textType || 'prompt',
-      generic_safety_check: options.genericSafetyCheck ?? true,
-      compliance_list: options.complianceList || [],
-      pii_list: options.piiList || [],
-    };
+  //   const payload = {
+  //     text: options.text,
+  //     greetings_list: options.greetingsList || [],
+  //     text_type: options.textType || 'prompt',
+  //     generic_safety_check: options.genericSafetyCheck ?? true,
+  //     compliance_list: options.complianceList || [],
+  //     pii_list: options.piiList || [],
+  //   };
 
-    try {
-      const response: any = await axios.post(url, payload, {
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: this.timeout,
-      });
-      return { success: true, data: response.data };
-    } catch (error: any) {
-      console.log("Failed to Generate Data From Walled Protect..", error.message);
-      console.log('\nRetrying ....\n ')
-      if (this.count < this.retries) {
-        this.count++;
-        await new Promise<void>((resolve) => { setTimeout(() => { resolve() }, 3000) });
-        return await this.guardrail({
-          text: options.text,
-          genericSafetyCheck: options.genericSafetyCheck,
-          greetingsList: options.greetingsList,
-          textType: options.textType,
-          complianceList: options.complianceList,
-          piiList: options.piiList
-        })
-      }
-      console.log("Failed ... ")
-      return { success: false, error: error.message }
-    }
-  }
+  //   try {
+  //     const response: any = await axios.post(url, payload, {
+  //       headers: {
+  //         Authorization: `Bearer ${this.apiKey}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //       timeout: this.timeout,
+  //     });
+  //     return { success: true, data: response.data };
+  //   } catch (error: any) {
+  //     console.log("Failed to Generate Data From Walled Protect..", error.message);
+  //     console.log('\nRetrying ....\n ')
+  //     if (this.count < this.retries) {
+  //       this.count++;
+  //       await new Promise<void>((resolve) => { setTimeout(() => { resolve() }, 3000) });
+  //       return await this.guardrail({
+  //         text: options.text,
+  //         genericSafetyCheck: options.genericSafetyCheck,
+  //         greetingsList: options.greetingsList,
+  //         textType: options.textType,
+  //         complianceList: options.complianceList,
+  //         piiList: options.piiList
+  //       })
+  //     }
+  //     console.log("Failed ... ")
+  //     return { success: false, error: error.message }
+  //   }
+  // }
 }

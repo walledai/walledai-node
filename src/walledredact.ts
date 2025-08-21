@@ -87,14 +87,13 @@ export class WalledRedact {
    * - The method will retry on failure up to the number of retries configured in the client.
    * - If all retries fail, the final response will contain an error message instead of throwing an exception.
    */
+  
   async guard(text: string | TextInput[]): Promise<PIIResponse> {
+    let res:any
     for (let attempt = 0; attempt < this.retries; attempt++) {
       try {
         const response = await this._httpApiCall(text);
-        return { 
-          success: true, 
-          data: response.data || {} 
-        };
+        res= response
       } catch (error: any) {
         console.log('Failed , error : ', error.message);
         console.log('\nRetrying ... \n');
@@ -104,18 +103,11 @@ export class WalledRedact {
           await new Promise(resolve => setTimeout(resolve, 2000));
         } else {
           console.log("Reached Maximum No of retries \n");
-          return { 
-            success: false, 
-            error: error.message 
-          };
+          res= error.response.data
         }
       }
     }
     
-    // This should never be reached, but TypeScript requires a return
-    return { 
-      success: false, 
-      error: "Unexpected error occurred" 
-    };
+    return res
   }
 }

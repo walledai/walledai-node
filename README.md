@@ -119,10 +119,12 @@ console.log(response);
 
 #### Successful Response Structure
 
-| Field      | Type      | Description |
-|------------|-----------|-------------|
+
+| Field      | Type   | Description |
+|------------|--------|-------------|
 | `success`  | `boolean` | Indicates if the request was processed successfully |
-| `data`     | `object`  | Contains the analysis results |
+|`statusCode`|  `number` | Http Status Code|
+| `data`     | `object` | Contains the analysis results |
 
 #### Data Object Structure
 
@@ -165,54 +167,78 @@ console.log(response);
 
 ```json
 {
-  "success": true,
-  "data": {
-    "safety": [
-      {
-        "safety": "generic",
-        "isSafe": false,
-        "score": null,
-        "method": "en-safety",
-        "processing_time": 0.49404191970825195,
-        "models_used": ["walled_e_guard_a"]
-      }
-    ],
-    "compliance": [
-      {
-        "topic": "medical",
-        "isOnTopic": false,
-        "error": null
-      }
-    ],
-    "pii": [
-      {
-        "pii_type": "Person's Name",
-        "isPresent": true,
-        "error": null
-      }
-    ],
-    "greetings": [
-      {
-        "greeting_type": "Casual & Friendly",
-        "isPresent": false,
-        "error": null
-      }
-    ]
-  }
-}
-```
-
-#### Error Response
-
-| Field     | Type      | Description |
-|-----------|-----------|-------------|
-| `success` | `boolean` | Always `false` for error responses |
-| `error`   | `string`  | Description of the error that occurred |
-
-```json
-{
-  "success": false,
-  "error": "Request failed with status code 403"
+    "success": true,
+    "statusCode": 200,
+    "data": {
+        "safety": [
+            {
+                "safety": "generic",
+                "isSafe": false,
+                "score": null,
+                "method": "en-safety",
+                "processing_time": 0.41751790046691895,
+                "models_used": [
+                    "walled_e_guard_a"
+                ]
+            }
+        ],
+        "compliance": [
+            {
+                "topic": "sdfsdf",
+                "isOnTopic": false,
+                "error": null
+            }
+        ],
+        "pii": [
+            {
+                "pii_type": "Person's Name",
+                "isPresent": true,
+                "error": null
+            },
+            {
+                "pii_type": "Address",
+                "isPresent": true,
+                "error": null
+            },
+            {
+                "pii_type": "Email Id",
+                "isPresent": true,
+                "error": null
+            },
+            {
+                "pii_type": "Contact No",
+                "isPresent": false,
+                "error": null
+            },
+            {
+                "pii_type": "Date Of Birth",
+                "isPresent": false,
+                "error": null
+            },
+            {
+                "pii_type": "Unique Id",
+                "isPresent": false,
+                "error": null
+            },
+            {
+                "pii_type": "Financial Data",
+                "isPresent": false,
+                "error": null
+            }
+        ],
+        "greetings": [
+            {
+                "greeting_type": "Casual & Friendly",
+                "isPresent": true,
+                "error": null
+            },
+            {
+                "greeting_type": "Professional & Polite",
+                "isPresent": true,
+                "error": null
+            }
+        ]
+    }
 }
 ```
 
@@ -296,23 +322,6 @@ Email Id,0.983,1.000,0.800,0.889,8,51,0,2
 Casual & Friendly,0.967,0.909,0.909,0.909,10,48,1,1
 ```
 
-### Legacy Support
-
-For backward compatibility, `WalledProtect` still supports the legacy `guardrail()` method:
-
-```ts
-const response = await walledProtect.guardrail({
-  text: "Hello, how are you?",
-  greetingsList: ["generalgreetings"],
-  textType: "prompt",
-  genericSafetyCheck: true,
-  complianceList: ["GDPR"],
-  piiList: ["Email Id", "Contact No"]
-});
-```
-
-**Note**: The `guardrail()` method now returns the same response format as the `guard()` method, with `status`, `code`, and `data` fields.
-
 ## WalledRedact - PII Detection & Masking
 
 The `WalledRedact` class detects and masks personally identifiable information (PII) in text, replacing sensitive data with placeholders.
@@ -348,10 +357,12 @@ const response = await walledRedact.guard(conversation);
 
 #### Successful Response Structure
 
-| Field      | Type      | Description |
-|------------|-----------|-------------|
-| `status`   | `string`  | Response status ("success" or "error") |
-| `data`     | `object`  | Contains the redaction results |
+| Field      | Type   | Description |
+|------------|--------|-------------|
+| `success`  | `boolean` | Indicates if the request was processed successfully |
+|`statusCode`|  `number` | Http Status Code
+| `data`     | `object` | Contains the analysis results |
+
 
 #### Data Object Structure
 
@@ -369,26 +380,39 @@ const response = await walledRedact.guard(conversation);
 
 ```json
 {
-  "status": "success",
-  "data": {
     "success": true,
-    "statusCode": 2001,
-    "remark": "guardrails success type 21",
-    "input": [
-      {
-        "role": "user",
-        "content": "Hi there, can you help me with some information?"
-      }
-    ],
-    "masked_text": [
-      {
-        "role": "user",
-        "content": "Hi there, can you help me with some information?"
-      }
-    ],
-    "mapping": {},
-    "error": null
-  }
+    "statusCode": 200,
+    "data": {
+        "success": true,
+        "statusCode": 2001,
+        "remark": "guardrails success type 21",
+        "input": [
+            {
+                "role": "user",
+                "content": "Hi, I'm John Doe. I live at 123 Maple Street and my email is john.doe@example.com"
+            },
+            {
+                "role": "assistant",
+                "content": "Hello John, how can I assist you today?"
+            }
+        ],
+        "masked_text": [
+            {
+                "role": "user",
+                "content": "Hi, I’m [Person_1]. I live at [Address_1] and my email is [Email_1]"
+            },
+            {
+                "role": "assistant",
+                "content": "Hello [Person_1], how can I assist you today?"
+            }
+        ],
+        "mapping": {
+            "[Person_1]": "John Doe",
+            "[Address_1]": "123 Maple Street",
+            "[Email_1]": "john.doe@example.com"
+        },
+        "error": null
+    }
 }
 ```
 
@@ -430,20 +454,33 @@ const walledRedact = new WalledRedact(
 
 Both classes return consistent error responses:
 
-| Field     | Type     | Description |
-|-----------|----------|-------------|
-| `status`  | `string` | "error" |
-| `code`    | `number` | HTTP status code |
-| `error`   | `string` | Error message |
-
+#### Error Response
+| Field           | Type      | Description |
+|-----------|--------|-------------|
+| `success` | `boolean` | Always `false` for error responses |
+| `statusCode`| `number`  | Http Status Code for errors |
+| `errorCode`| `string`| Main Model Error Code (for guardrail/pii)|
+| `message`|`string`| Description of Error|
+| `details`| `object`| Details of Error|
 ```json
 {
-  "status": "error",
-  "code": 500,
-  "error": "Network error or server failure message"
+    "success": false,
+    "statusCode": 400,
+    "errorCode": "INVALID_GREETING_TYPE",
+    "message": "Invalid greeting types: ['Casual & Friendlyy']. Must be one of: ['Casual & Friendly', 'Professional & Polite']",
+    "details": {
+        "invalid_greetings": [
+            "Casual"
+        ],
+        "valid_greetings": [
+            "Casual & Friendly",
+            "Professional & Polite"
+        ]
+    }
 }
-```
 
+```
+> Checkout [documentation](https://docs.walled.ai/error-codes-1302667m0) for understanding of error codes 
 ### Error Handling Features
 
 - **Automatic retries**: Failed requests are automatically retried

@@ -9,6 +9,10 @@ export interface TextInput {
 
 export interface PIIResponse {
     success: boolean;
+    statusCode: number;
+    message?: string;
+    errorCode?: string
+    details?: any;
     data?: {
         success: boolean;
         statusCode: number;
