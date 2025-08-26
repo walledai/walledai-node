@@ -22,6 +22,19 @@
 # Walled AI SDK (Node.js)
 
 Guardrails and PII redaction for LLM apps — simple Node.js SDK.
+## ⚖️ Guardrails Benchmark
+
+| Platform        | 🛡️ English ↑ | 🌍 Multilingual ↑ | ⚡ Latency ↓        | 🏢 On-Prem |
+|-----------------|--------------|-------------------|---------------------|------------|
+|  🌟 **Walled AI** | **90.30%** | **90.29%**      | **200 ms** (30 ms*) | ✅ Yes |
+| Bedrock         | 83.36%       | 79.26%            | 500 ms              | ❌ No |
+| Mistral         | 76.07%       | 76.86%            | 300 ms              | ❌ No |
+| Azure           | 74.52%       | 73.74%            | 300 ms              | ❌ No |
+| OpenAI          | 76.29%       | 72.95%            | 350 ms              | ❌ No |
+
+<sub>🛡️ Multilingual benchmark: Arabic, English, Filipino, French, Hindi, Russian, Serbian, Spanish.</sub>  
+<sub>🌍 Multilingual benchmark: Arabic, English, Filipino, French, Hindi, Russian, Serbian, Spanish.</sub>  
+<sub>*✨ 30 ms on-premises deployment.</sub>
 
 ## 🚀 Installation
 
