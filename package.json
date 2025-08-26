@@ -1,6 +1,6 @@
 {
   "name": "walledai",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "A Node.js SDK for interacting with the Walled AI.",
   "type": "module",
   "main": "./dist/esm/index.js",

@@ -80,7 +80,7 @@ export class WalledProtect {
 
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.apiKey}`
+      'Authorization': this.apiKey
     };
 
     try {

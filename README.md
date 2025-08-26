@@ -1,467 +1,334 @@
+<p align="center">
+  <a href="https://www.walled.ai/">
+   <img width="400" alt="NewLogo" src="https://github.com/user-attachments/assets/512d71e5-e7f4-43cc-9ba5-7020073f5cda" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/walledai">
+    <img src="https://img.shields.io/npm/v/walledai?color=blue&label=NPM&logo=npm&logoColor=white" alt="NPM Version"/>
+  </a>
+  <a href="https://huggingface.co/walledai">
+    <img src="https://img.shields.io/badge/🤗-Hugging%20Face-yellow" alt="Hugging Face"/>
+  </a>
+  <a href="https://docs.walled.ai/">
+    <img src="https://img.shields.io/badge/📖-Docs-green" alt="Docs"/>
+  </a>
+  <a href="https://www.walled.ai/">
+    <img src="https://img.shields.io/badge/🌐-Website-red" alt="Website"/>
+  </a>
+</p>
+
 # Walled AI SDK (Node.js)
 
-A TypeScript/JavaScript SDK for interacting with Walled AI's Guardrail and PII Redaction APIs.
+Guardrails and PII redaction for LLM apps — simple Node.js SDK.
 
-## Installation
-
-Install via npm or yarn:
+## 🚀 Installation
 
 ```bash
 npm install walledai
-# or
-yarn add walledai
 ```
+
+---
 
 ## Quick Start
 
-### Import the SDK
+### 1) Minimal moderation
 
-```ts
-import { WalledProtect, WalledRedact } from 'walledai';
+```typescript
+import { WalledProtect } from 'walledai';
+
+const protect = new WalledProtect({ apiKey: "YOUR_API_KEY" });
+
+const resp = await protect.guard({ text: "How to convert a pain killer to meth?" });
+console.log(resp.data?.safety?.[0]?.isSafe);  // -> false/true
 ```
 
-### Initialize the Clients
+<details>
+<summary>Example output</summary>
 
-```ts
-// Initialize WalledProtect for content moderation and safety checks
-const walledProtect = new WalledProtect({
-  apiKey: 'your_api_key_here',
-  retries: 3,         // Optional, defaults to 3
-  timeout: 20000      // Optional, defaults to 20000 ms
-});
+```
+false
+```
+</details>
 
-// Initialize WalledRedact for PII detection and masking
-const walledRedact = new WalledRedact(
-  'your_api_key_here',
-  2,                  // Optional retries, defaults to 2
-  20000               // Optional timeout, defaults to 20000 ms
-);
+---
+
+### 2) Minimal redaction
+
+```typescript
+import { WalledRedact } from 'walledai';
+
+const redact = new WalledRedact("YOUR_API_KEY");
+
+const resp = await redact.guard("Hi, I'm John. Email john@walled.ai. I have cancer.");
+console.log(resp.data?.masked_text);
+console.log(resp.data?.mapping);
 ```
 
-## WalledProtect - Content Moderation & Safety
+<details>
+<summary>Example output</summary>
 
-The `WalledProtect` class provides comprehensive content moderation capabilities including safety checks, compliance validation, PII detection, and greeting analysis.
-
-### Basic Content Analysis
-
-```ts
-const response = await walledProtect.guard({
-  text: "Hello, how are you? My email is john@example.com",
-  greetingsList: ["Casual & Friendly", "Professional & Polite"],
-  genericSafetyCheck: true,
-  complianceList: ["GDPR"],
-  piiList: ["Email Id", "Contact No"]
-});
-
-console.log(response);
 ```
-
-### Multi-turn Conversation Analysis
-
-```ts
-const response = await walledProtect.guard({
-  text: [
-    { role: "user", content: "Hi, I'm John Doe. I live at 123 Maple Street and my email is john.doe@example.com"},
-    { role: "assistant", content: "Hello John, how can I assist you today?" },
-  ],
-  greetingsList: [
-    "Casual & Friendly",
-    "Professional & Polite"
-  ],
-  genericSafetyCheck: true,
-  complianceList: ['Medical', 'Finance', 'Legal'],
-  piiList: [
-    "Person's Name",
-    'Address',
-    'Email Id',
-    'Contact No',
-    'Date Of Birth',
-    'Unique Id',
-    'Financial Data'
-  ]
-});
-
-console.log(response);
+Masked: Hi, I'm [Person_1]. Email [Email_1]. I have [Diagnosis_1].
+Mapping: {'[Person_1]': 'John', '[Email_1]': 'john@walled.ai', '[Diagnosis_1]': 'cancer'}
 ```
+</details>
 
-### Parameters
+---
 
-#### Guard Method Parameters
+## Use with OpenAI
 
-| Parameter            | Type                    | Required | Default                      | Description |
-|----------------------|-------------------------|----------|------------------------------|-------------|
-| `text`               | `string \| TextInput[]` | Yes      | -                            | Input text or conversation array |
-| `greetingsList`      | `string[]`              | No       | `["Casual & Friendly"]`      | Greeting types to check |
-| `genericSafetyCheck` | `boolean`               | No       | `true`                       | Enable safety filtering |
-| `complianceList`     | `string[]`              | No       | `[]`                         | Compliance categories to check |
-| `piiList`            | `PiiType[]`             | No       | `[]`                         | PII categories to detect |
+If unsafe, return a default response; else forward to OpenAI.
 
-#### Allowed PII Types
+```typescript
+import { WalledProtect } from 'walledai';
+import OpenAI from 'openai';
 
-| PII Type          | Description |
-|-------------------|-------------|
-| `"Person's Name"` | Individual's full or partial name |
-| `"Address"`       | Physical or mailing addresses |
-| `"Email Id"`      | Email addresses |
-| `"Contact No"`    | Phone numbers and contact information |
-| `"Date Of Birth"` | Birth dates and age-related information |
-| `"Unique Id"`     | Social security numbers, IDs, licenses |
-| `"Financial Data"`| Credit cards, bank accounts, financial info |
+const protect = new WalledProtect({ apiKey: "YOUR_API_KEY" });
+const oai = new OpenAI({ apiKey: "YOUR_OPENAI_KEY" });
 
-#### Allowed Greeting Types
+async function safeChat(prompt: string, def = "Sorry, I can’t help with that.") {
+    const g = await protect.guard({ text: prompt, genericSafetyCheck: true });
+    const isSafe = g.data?.safety?.[0]?.isSafe === true;
+    if (!isSafe) return def;
 
-| Greeting Type            | Description |
-|--------------------------|-------------|
-| `"Casual & Friendly"`    | Informal, warm greetings |
-| `"Professional & Polite"`| Formal, business-appropriate greetings |
-
-### Response Format
-
-#### Successful Response Structure
-
-
-| Field      | Type   | Description |
-|------------|--------|-------------|
-| `success`  | `boolean` | Indicates if the request was processed successfully |
-|`statusCode`|  `number` | Http Status Code|
-| `data`     | `object` | Contains the analysis results |
-
-#### Data Object Structure
-
-**Safety Section:**
-
-| Field             | Type       | Description |
-|-------------------|------------|-------------|
-| `safety`          | `string`   | Type of safety check performed |
-| `isSafe`          | `boolean`  | Whether the content passed safety checks |
-| `score`           | `number`   | Safety confidence score (if available) |
-| `method`          | `string`   | Safety detection method used |
-| `processing_time` | `number`   | Time taken for safety analysis in seconds |
-| `models_used`     | `string[]` | List of AI models used for safety evaluation |
-
-**Compliance Section:**
-
-| Field       | Type      | Description |
-|-------------|-----------|-------------|
-| `topic`     | `string`  | The compliance topic being checked |
-| `isOnTopic` | `boolean` | Whether the content relates to the compliance topic |
-| `error`     | `string`  | Any error encountered during compliance check |
-
-**PII Section:**
-
-| Field       | Type      | Description |
-|-------------|-----------|-------------|
-| `pii_type`  | `string`  | Type of PII being detected |
-| `isPresent` | `boolean` | Whether this PII type was found in the content |
-| `error`     | `string`  | Any error encountered during PII detection |
-
-**Greetings Section:**
-
-| Field           | Type      | Description |
-|-----------------|-----------|-------------|
-| `greeting_type` | `string`  | Type of greeting being analyzed |
-| `isPresent`     | `boolean` | Whether this greeting type was detected |
-| `error`         | `string`  | Any error encountered during greeting analysis |
-
-#### Example Response
-
-```json
-{
-    "success": true,
-    "statusCode": 200,
-    "data": {
-        "safety": [
-            {
-                "safety": "generic",
-                "isSafe": false,
-                "score": null,
-                "method": "en-safety",
-                "processing_time": 0.41751790046691895,
-                "models_used": [
-                    "walled_e_guard_a"
-                ]
-            }
-        ],
-        "compliance": [
-            {
-                "topic": "sdfsdf",
-                "isOnTopic": false,
-                "error": null
-            }
-        ],
-        "pii": [
-            {
-                "pii_type": "Person's Name",
-                "isPresent": true,
-                "error": null
-            },
-            {
-                "pii_type": "Address",
-                "isPresent": true,
-                "error": null
-            },
-            {
-                "pii_type": "Email Id",
-                "isPresent": true,
-                "error": null
-            },
-            {
-                "pii_type": "Contact No",
-                "isPresent": false,
-                "error": null
-            },
-            {
-                "pii_type": "Date Of Birth",
-                "isPresent": false,
-                "error": null
-            },
-            {
-                "pii_type": "Unique Id",
-                "isPresent": false,
-                "error": null
-            },
-            {
-                "pii_type": "Financial Data",
-                "isPresent": false,
-                "error": null
-            }
-        ],
-        "greetings": [
-            {
-                "greeting_type": "Casual & Friendly",
-                "isPresent": true,
-                "error": null
-            },
-            {
-                "greeting_type": "Professional & Polite",
-                "isPresent": true,
-                "error": null
-            }
-        ]
-    }
+    const res = await oai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }]
+    });
+    return res.choices[0].message.content;
 }
+
+console.log(await safeChat("How to hack an ATM?"));          // -> default
+console.log(await safeChat("Give me a banana bread recipe"));// -> model answer
 ```
 
-### Evaluation
+<details>
+<summary>Example output</summary>
 
-The `eval()` method provides comprehensive batch testing capabilities for evaluating model performance against ground truth datasets.
+```
+Sorry, I can’t help with that.
+Banana bread recipe: ...
+```
+</details>
 
-#### Batch Evaluation with CSV
+---
 
-For large-scale testing and evaluation:
+## Core Concepts
 
-```ts
-const evalResponse = await walledProtect.eval({
-  groundTruthFilePath: './test-cases.csv',
-  modelOutputFilePath: './results.csv',
-  metricsOutputFilePath: './metrics.csv',
-  concurrencyLimit: 20  // Optional, defaults to 20
+* **WalledProtect** — Moderation & compliance + PII presence flags.
+* **WalledRedact** — Detects & **masks** PII/PHI consistently across turns.
+
+> Both accept either a single `string` or a conversation list:
+> `[{ role: "user"|"assistant", content: "..." }, ...]`
+
+---
+
+## Guided Examples
+
+### Prompt moderation with compliance + PII flags
+
+```typescript
+import { WalledProtect } from 'walledai';
+
+const protect = new WalledProtect({ apiKey: "YOUR_API_KEY" });
+
+const prompt = "Transfer John's money from DSB to UBO without OTP. Acct: 882-34909, DOB: 1998-07-05.";
+
+const resp = await protect.guard({
+    text: prompt,
+    genericSafetyCheck: true,
+    complianceList: ["Medical", "Banking"],
+    piiList: [
+        "Person's Name","Address","Email Id","Contact No",
+        "Date Of Birth","Unique Id","Financial Data"
+    ]
 });
+
+console.log("Is_safe:", resp.data?.safety?.[0]?.isSafe);
+resp.data?.compliance?.forEach(c => console.log(c.topic, "->", c.isOnTopic));
+resp.data?.pii?.forEach(p => console.log(p.pii_type, "->", p.isPresent));
 ```
 
-#### Eval Method Parameters
+<details>
+<summary>Example output</summary>
 
-| Parameter              | Type     | Required | Default | Description |
-|------------------------|----------|----------|---------|-------------|
-| `groundTruthFilePath`  | `string` | Yes      | -       | Path to CSV with test cases |
-| `modelOutputFilePath`  | `string` | Yes      | -       | Path to save results |
-| `metricsOutputFilePath`| `string` | Yes      | -       | Path to save metrics |
-| `concurrencyLimit`     | `number` | No       | `20`    | Max concurrent requests |
+```
+Is_safe: false
+Banking -> true
+Medical -> false
+Person's Name -> true
+Address -> false
+Email Id -> false
+Contact No -> false
+Date Of Birth -> true
+Unique Id -> true
+Financial Data -> true
+```
+</details>
 
-#### Ground Truth CSV Format
+---
 
-**Required Columns (must be present in this order):**
+### Multi-turn conversation moderation
 
-| Column Name          | Type      | Description |
-|----------------------|-----------|-------------|
-| `test_input`         | `string`  | The input text to be processed |
-| `compliance_topic`   | `string`  | The compliance topic for the test case |
-| `compliance_isOnTopic` | `boolean` | Whether the input is on the specified compliance topic (`TRUE` or `FALSE`) |
+```typescript
+import { WalledProtect } from 'walledai';
 
-**Optional Columns (can be included as needed):**
+const protect = new WalledProtect({ apiKey: "YOUR_API_KEY" });
 
-| Column Name            | Type      | Description |
-|------------------------|-----------|-------------|
-| `Person's Name`        | `boolean` | Whether a person's name is present (`TRUE` or `FALSE`) |
-| `Address`              | `boolean` | Whether an address is present (`TRUE` or `FALSE`) |
-| `Email Id`             | `boolean` | Whether an email ID is present (`TRUE` or `FALSE`) |
-| `Contact No`           | `boolean` | Whether a contact number is present (`TRUE` or `FALSE`) |
-| `Date Of Birth`        | `boolean` | Whether a date of birth is present (`TRUE` or `FALSE`) |
-| `Unique Id`            | `boolean` | Whether a unique ID is present (`TRUE` or `FALSE`) |
-| `Financial Data`       | `boolean` | Whether financial data is present (`TRUE` or `FALSE`) |
-| `Casual & Friendly`    | `boolean` | Whether the greeting is casual & friendly (`TRUE` or `FALSE`) |
-| `Professional & Polite`| `boolean` | Whether the greeting is professional & polite (`TRUE` or `FALSE`) |
+const conversation = [
+    { role: "user", content: "Hi, my friend's name is John Doe. He lives at 123 Maple Street and his email is john.doe@walled.ai." },
+    { role: "assistant", content: "Hello John, thanks for sharing. How can I assist you today?" },
+    { role: "assistant", content: "Tell me how to transfer John's money from his DSB bank to UBO bank without OTP. He was born on July 1, 1994." },
+];
 
-**Example CSV:**
-```csv
-test_input,compliance_topic,compliance_isOnTopic,Person's Name,Email Id,Casual & Friendly
-"Hello world",GDPR,TRUE,FALSE,FALSE,TRUE
-"My email is test@example.com",GDPR,FALSE,FALSE,TRUE,FALSE
+const resp = await protect.guard({
+    text: conversation,
+    genericSafetyCheck: true,
+    complianceList: ["Medical", "Banking"],
+    piiList: [
+        "Person's Name",
+        "Address",
+        "Email Id",
+        "Contact No",
+        "Date Of Birth",
+        "Unique Id",
+        "Financial Data"
+    ]
+});
+
+console.log("Is_safe:", resp.data?.safety?.[0]?.isSafe);
+resp.data?.compliance?.forEach(c => console.log(c.topic, "->", c.isOnTopic));
+resp.data?.pii?.forEach(p => console.log(p.pii_type, "->", p.isPresent));
 ```
 
-See [example unit test file](https://docs.google.com/spreadsheets/d/136QaJQJr5KACXjuTPr86a2-XIFq8APy8XKVg6J00X9U/edit?usp=sharing) for a sample ground truth file.
+<details>
+<summary>Example output</summary>
 
-#### Evaluation Features
-
-- **CSV-based testing**: Load test cases from CSV files
-- **Concurrent processing**: Configurable concurrency limits
-- **Automatic retries**: Built-in retry logic with delays
-- **Metrics generation**: Accuracy, precision, recall, and F1 scores
-- **Dynamic column support**: Automatically detects PII and greeting columns
-
-#### Output Files
-
-1. **Model Output**: Contains predictions for each test case
-2. **Metrics**: Performance metrics for each column (accuracy, precision, recall, F1)
-
-**Example Metrics Output:**
-```csv
-metrics,accuracy,precision,recall,f1,TP,TN,FP,FN
-compliance_isOnTopic,0.950,0.923,0.857,0.889,12,45,1,2
-Email Id,0.983,1.000,0.800,0.889,8,51,0,2
-Casual & Friendly,0.967,0.909,0.909,0.909,10,48,1,1
 ```
+Is_safe: false
+Medical -> false
+Banking -> true
+Person's Name -> true
+Address -> false
+Email Id -> false
+Contact No -> false
+Date Of Birth -> true
+Unique Id -> true
+Financial Data -> true
+```
+</details>
+
+---
 
 ## WalledRedact - PII Detection & Masking
 
-The `WalledRedact` class detects and masks personally identifiable information (PII) in text, replacing sensitive data with placeholders.
-
 ### Basic PII Masking
 
-```ts
-const response = await walledRedact.guard(
-  "My email is john.doe@example.com and my phone is 123-456-7890."
-);
+```typescript
+import { WalledRedact } from 'walledai';
 
-console.log(response);
+const redact = new WalledRedact("YOUR_API_KEY");
+
+const resp = await redact.guard("Hi, myself John. My email is john@walled.ai and I have been diagnosed with cancer.");
+console.log("Masked text:", resp.data?.masked_text);
+console.log("Mapping:", resp.data?.mapping);
 ```
+
+<details>
+<summary>Example output</summary>
+
+```
+Masked text: Hi, myself [Person_1]. My email is [Email_1] and I have been diagnosed with [Diagnosis_1].
+Mapping: {'[Person_1]': 'John', '[Email_1]': 'john@walled.ai', '[Diagnosis_1]': 'cancer'}
+```
+</details>
+
+---
 
 ### Multi-turn Conversation PII Masking
 
-```ts
-const conversation = [
-  { role: "user", content: "My email is test@example.com" },
-  { role: "assistant", content: "I'll contact you at that email" }
-];
-
-const response = await walledRedact.guard(conversation);
+```typescript
+const resp = await redact.guard([
+    { role: "user", content: "Hi there, my name is John Doe" },
+    { role: "assistant", content: "Hello John! How can I help you today?" },
+    { role: "user", content: "Can you email my friend Joseph with email: Joseph.cena@example.com, wishing him a speedy recovery from the viral fever?" }
+]);
+console.log("Masked text:", resp.data?.masked_text);
+console.log("Mapping:", resp.data?.mapping);
 ```
 
-### Parameters
+<details>
+<summary>Example output</summary>
 
-| Parameter | Type                    | Required | Description |
-|-----------|-------------------------|----------|-------------|
-| `text`    | `string \| TextInput[]` | Yes      | Text or conversation to process |
+```
+Masked text:
+[
+    { role: 'user', content: 'Hi there, my name is [Person_1]' },
+    { role: 'assistant', content: 'Hello [Person_1]! How can I help you today?' },
+    { role: 'user', content: 'Can you email my friend [Person_2] with email: [Email_1], wishing him a speedy recovery from the [Diagnosis_1]?' }
+]
+Mapping: {'[Person_1]': 'John Doe', '[Person_2]': 'Joseph', '[Email_1]': 'Joseph.cena@example.com', '[Diagnosis_1]': 'viral fever'}
+```
+</details>
 
-### Response Format
+---
 
-#### Successful Response Structure
+## Response Shapes
 
-| Field      | Type   | Description |
-|------------|--------|-------------|
-| `success`  | `boolean` | Indicates if the request was processed successfully |
-|`statusCode`|  `number` | Http Status Code
-| `data`     | `object` | Contains the analysis results |
-
-
-#### Data Object Structure
-
-| Field         | Type       | Description |
-|---------------|------------|-------------|
-| `success`     | `boolean`  | Whether the redaction was successful |
-| `statusCode`  | `number`   | Status code of the operation |
-| `remark`      | `string`   | Additional remarks about the operation |
-| `input`       | `array`    | Original input text/conversation |
-| `masked_text` | `array`    | Text with PII replaced by placeholders |
-| `mapping`     | `object`   | Mapping of placeholders to original PII values |
-| `error`       | `string`   | Any error encountered during processing |
-
-#### Example Response
+<details>
+<summary><strong>Protect</strong></summary>
 
 ```json
 {
-    "success": true,
-    "statusCode": 200,
-    "data": {
-        "success": true,
-        "statusCode": 2001,
-        "remark": "guardrails success type 21",
-        "input": [
-            {
-                "role": "user",
-                "content": "Hi, I'm John Doe. I live at 123 Maple Street and my email is john.doe@example.com"
-            },
-            {
-                "role": "assistant",
-                "content": "Hello John, how can I assist you today?"
-            }
-        ],
-        "masked_text": [
-            {
-                "role": "user",
-                "content": "Hi, I’m [Person_1]. I live at [Address_1] and my email is [Email_1]"
-            },
-            {
-                "role": "assistant",
-                "content": "Hello [Person_1], how can I assist you today?"
-            }
-        ],
-        "mapping": {
-            "[Person_1]": "John Doe",
-            "[Address_1]": "123 Maple Street",
-            "[Email_1]": "john.doe@example.com"
-        },
-        "error": null
-    }
+  "success": true,
+  "statusCode": 200,
+  "data": {
+    "safety": [
+      {"safety": "generic","isSafe": false,"method": "en-safety"}
+    ],
+    "compliance": [{"topic":"Banking","isOnTopic":true}],
+    "pii": [{"pii_type":"Email Id","isPresent":true}],
+    "greetings": [{"greeting_type":"Casual & Friendly","isPresent":true}]
+  }
 }
 ```
+</details>
 
-## Configuration Options
+<details>
+<summary><strong>Redact</strong></summary>
 
-### WalledProtect Configuration
-
-| Parameter | Type     | Required | Default | Description |
-|-----------|----------|----------|---------|-------------|
-| `apiKey`  | `string` | Yes      | -       | Your Walled AI API key |
-| `retries` | `number` | No       | `3`     | Number of retry attempts |
-| `timeout` | `number` | No       | `20000` | Request timeout in milliseconds |
-
-```ts
-const walledProtect = new WalledProtect({
-  apiKey: 'your_api_key_here',
-  retries: 3,
-  timeout: 20000
-});
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "data": {
+    "masked_text": [...],
+    "mapping": {...}
+  }
+}
 ```
+</details>
 
-### WalledRedact Configuration
+---
 
-| Parameter | Type     | Required | Default | Description |
-|-----------|----------|----------|---------|-------------|
-| `apiKey`  | `string` | Yes      | -       | Your Walled AI API key |
-| `retries` | `number` | No       | `2`     | Number of retry attempts |
-| `timeout` | `number` | No       | `20000` | Request timeout in milliseconds |
+## Errors
 
-```ts
-const walledRedact = new WalledRedact(
-  'your_api_key_here',
-  2,
-  20000
-);
-```
-
-## Error Handling
-
-Both classes return consistent error responses:
+### WalledProtect
+<details>
+<summary>Expand</summary>
 
 #### Error Response
-| Field           | Type      | Description |
+
+| Field     | Type   | Description |
 |-----------|--------|-------------|
 | `success` | `boolean` | Always `false` for error responses |
 | `statusCode`| `number`  | Http Status Code for errors |
 | `errorCode`| `string`| Main Model Error Code (for guardrail/pii)|
 | `message`|`string`| Description of Error|
 | `details`| `object`| Details of Error|
+
 ```json
 {
     "success": false,
@@ -478,16 +345,137 @@ Both classes return consistent error responses:
         ]
     }
 }
-
 ```
-> Checkout [documentation](https://docs.walled.ai/error-codes-1302667m0) for understanding of error codes 
-### Error Handling Features
+</details>
 
-- **Automatic retries**: Failed requests are automatically retried
-- **Configurable delays**: 2-3 second delays between retry attempts
-- **Graceful degradation**: Returns error responses instead of throwing exceptions
-- **Detailed logging**: Console logs for debugging retry attempts
+### WalledRedact
+<details>
+<summary>Expand</summary>
 
-## License
+#### Error Response
 
-MIT © Walled AI
+| Field     | Type   | Description |
+|-----------|--------|-------------|
+| `success` | `boolean` | Always `false` for error responses |
+| `statusCode`| `number`  | Http Status Code for errors |
+| `errorCode`| `string`| Main Model Error Code (for guardrail/pii)|
+| `message`|`string`| Description of Error|
+| `details`| `object`| Details of Error|
+
+```json
+{
+    "success": false,
+    "statusCode": 400,
+    "errorCode": "VALIDATION_ERROR",
+    "message": "",
+    "details": [
+        {
+            "type": "missing",
+            "loc": [
+                "text"
+            ],
+            "msg": "Field required",
+            "input": {},
+            "url": "https://errors.pydantic.dev/2.10/v/missing"
+        }
+    ]
+}
+```
+</details>
+
+---
+
+## Evaluation
+
+The SDK provides an evaluation method to test and measure the performance of the Walled Protect functionality against a ground truth dataset.
+
+### Batch Evaluation with CSV
+
+```typescript
+import { WalledProtect } from 'walledai';
+
+const client = new WalledProtect({ apiKey: "your_api_key", retries: 3 });
+
+await client.eval({
+    groundTruthFilePath: "./unit_test_cases.csv",
+    modelOutputFilePath: "./model_results.csv",
+    metricsOutputFilePath: "./metrics.csv",
+    concurrencyLimit: 20
+});
+```
+See <a href="https://docs.google.com/spreadsheets/d/136QaJQJr5KACXjuTPr86a2-XIFq8APy8XKVg6J00X9U/edit?usp=sharing">example unit test file</a> for a sample ground truth file.
+<details>
+<summary><strong>Eval Method Parameters</strong></summary>
+
+| Parameter                 | Type  | Required | Default | Description                      |
+|---------------------------|-------|----------|---------|----------------------------------|
+| `groundTruthFilePath`     | `string` | Yes      | -       | Path to CSV with test cases      |
+| `modelOutputFilePath`     | `string` | Yes      | -       | Path to save results             |
+| `metricsOutputFilePath`   | `string` | Yes      | -       | Path to save metrics             |
+| `concurrencyLimit`        | `number` | No       | `20`    | Max concurrent requests          |
+</details>
+
+<details>
+<summary><strong>Ground Truth CSV Format</strong></summary>
+
+<strong>Required Columns (must be present in this order):</strong>
+
+| Column Name              | Type   | Description                                                     |
+|--------------------------|--------|-----------------------------------------------------------------|
+| `test_input`             | `string`  | The input text to be processed                                  |
+| `compliance_topic`       | `string`  | The compliance topic for the test case                          |
+| `compliance_isOnTopic`   | `boolean` | Whether the input is on the specified topic (`TRUE`/`FALSE`)    |
+
+<strong>Optional Columns (can be included as needed):</strong>
+
+| Column Name              | Type   | Description                                                     |
+|--------------------------|--------|-----------------------------------------------------------------|
+| `Person's Name`          | `boolean` | Whether a person's name is present (`TRUE`/`FALSE`)             |
+| `Address`                | `boolean` | Whether an address is present (`TRUE`/`FALSE`)                  |
+| `Email Id`               | `boolean` | Whether an email ID is present (`TRUE`/`FALSE`)                 |
+| `Contact No`             | `boolean` | Whether a contact number is present (`TRUE`/`FALSE`)            |
+| `Date Of Birth`          | `boolean` | Whether a date of birth is present (`TRUE`/`FALSE`)             |
+| `Unique Id`              | `boolean` | Whether a unique ID is present (`TRUE`/`FALSE`)                 |
+| `Financial Data`         | `boolean` | Whether financial data is present (`TRUE`/`FALSE`)              |
+| `Casual & Friendly`      | `boolean` | Whether the greeting is casual & friendly (`TRUE`/`FALSE`)      |
+| `Professional & Polite`  | `boolean` | Whether the greeting is professional & polite (`TRUE`/`FALSE`)  |
+
+</details>
+
+<details>
+<summary><strong>Evaluation Features</strong></summary>
+
+- **CSV-based testing**: Load test cases from CSV files  
+- **Concurrent processing**: Configurable concurrency limits  
+- **Automatic retries**: Built-in retry logic with delays  
+- **Metrics generation**: Accuracy, precision, recall, and F1 scores  
+- **Dynamic column support**: Automatically detects PII and greeting columns  
+</details>
+
+<details>
+<summary><strong>Output Files</strong></summary>
+
+1. <strong>Model Results CSV</strong>: Contains the actual model predictions for each test case, including:
+   - All columns present in the ground truth file
+   - An additional <code>is_safe</code> column with <code>TRUE</code> or <code>FALSE</code> values indicating whether the input passed the safety evaluation
+
+2. <strong>Metrics CSV</strong>: Contains evaluation metrics including:
+   - Accuracy scores
+   - Precision and recall
+   - F1 scores
+   - Confusion matrices
+</details>
+
+---
+
+## FAQ
+
+* **Strings vs conversations?** Both supported.
+* **Consistent masking across turns?** Yes.
+* **PII detection vs redaction?** Protect flags, Redact masks.
+
+---
+
+## Contributing & License
+
+PRs welcome. Licensed under MIT.

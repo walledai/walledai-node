@@ -54,7 +54,7 @@ export class WalledRedact {
 
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.apiKey}`
+      'x-api-ey': this.apiKey
     };
 
     try {
