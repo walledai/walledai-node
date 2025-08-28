@@ -18,7 +18,7 @@ export class WalledRedact {
   private retries: number;
   private timeout: number;
   private static count: number = 1;
-  private static url: string = `${basUrl}/pii/encrypt`;
+  private url: string;
 
   /**
    * Initialize the PII client.
@@ -26,19 +26,14 @@ export class WalledRedact {
    * This sets up the client with the required API key and optional configurations
    * for request retry logic and timeout behavior.
    * 
-   * @param apiKey The API key obtained from Walled AI.
-   * @param retries Number of retry attempts in case of request failure.
-   *                If a request fails (e.g., due to a network error or server issue), the client
-   *                will automatically retry the request up to the specified number of times.
-   *                Defaults to 2.
-   * @param timeout Maximum time (in milliseconds) to wait for a response from the server
-   *                before aborting the request. Applies to both connection and read timeouts.
-   *                Defaults to 20000 milliseconds (20 seconds).
+   * @param config Object containing apiKey, retries, timeout
+   *        { apiKey: string, retries?: number, timeout?: number }
    */
-  constructor(apiKey: string, retries: number = 2, timeout: number = 20000) {
-    this.apiKey = apiKey;
-    this.retries = retries;
-    this.timeout = timeout;
+  constructor(config: { apiKey: string, retries?: number, timeout?: number }) {
+    this.apiKey = config.apiKey;
+    this.retries = config?.retries || 2;
+    this.timeout = config?.timeout || 20000;
+    this.url = `${basUrl}/walled-redact`;
   }
 
   /**
@@ -47,18 +42,17 @@ export class WalledRedact {
    * @returns Promise resolving to the API response
    */
   private async _httpApiCall(text: string | TextInput[]): Promise<any> {
-    const url = `${basUrl}/walled-redact`;
     const payload = {
       text: text
     };
 
     const headers = {
       'Content-Type': 'application/json',
-      'x-api-ey': this.apiKey
+      'x-api-key': this.apiKey
     };
 
     try {
-      const response = await axios.post(url, payload, {
+      const response = await axios.post(this.url, payload, {
         headers,
         timeout: this.timeout,
       });
@@ -75,8 +69,7 @@ export class WalledRedact {
    * This method sends a request to the Walled AI API and returns a structured response
    * containing PII formatted data.
    * 
-   * @param text The input text to evaluate. Can be a single string or a list of TextInput objects for multi-turn or structured input.
-   *             TextInput format: {"role": string, "content": string}
+   * @param options Object with a 'text' field: { text: string | TextInput[] }
    * @returns Promise resolving to PIIResponse object containing the evaluation results, including PII detection and formatting.
    * 
    * If the request fails, a dictionary is returned with:
@@ -87,13 +80,13 @@ export class WalledRedact {
    * - The method will retry on failure up to the number of retries configured in the client.
    * - If all retries fail, the final response will contain an error message instead of throwing an exception.
    */
-  
-  async guard(text: string | TextInput[]): Promise<PIIResponse> {
-    let res:any
+  async guard(options: { text: string | TextInput[] }): Promise<PIIResponse> {
+    let res: any;
+    const { text } = options;
     for (let attempt = 0; attempt < this.retries; attempt++) {
       try {
         const response = await this._httpApiCall(text);
-        res= response
+        res = response;
       } catch (error: any) {
         console.log('Failed , error : ', error.message);
         console.log('\nRetrying ... \n');
@@ -103,11 +96,10 @@ export class WalledRedact {
           await new Promise(resolve => setTimeout(resolve, 2000));
         } else {
           console.log("Reached Maximum No of retries \n");
-          res= error.response.data
+          res = error.response.data;
         }
       }
     }
-    
-    return res
+    return res;
   }
 }

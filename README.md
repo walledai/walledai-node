@@ -72,9 +72,9 @@ false
 ```typescript
 import { WalledRedact } from 'walledai';
 
-const redact = new WalledRedact("YOUR_API_KEY");
+const redact = new WalledRedact({ apiKey: "YOUR_API_KEY" });
 
-const resp = await redact.guard("Hi, I'm John. Email john@walled.ai. I have cancer.");
+const resp = await redact.guard({ text: "Hi, I'm John. Email john@walled.ai. I have cancer." });
 console.log(resp.data?.masked_text);
 console.log(resp.data?.mapping);
 ```
@@ -242,9 +242,9 @@ Financial Data -> true
 ```typescript
 import { WalledRedact } from 'walledai';
 
-const redact = new WalledRedact("YOUR_API_KEY");
+const redact = new WalledRedact({ apiKey: "YOUR_API_KEY" });
 
-const resp = await redact.guard("Hi, myself John. My email is john@walled.ai and I have been diagnosed with cancer.");
+const resp = await redact.guard({ text: "Hi, myself John. My email is john@walled.ai and I have been diagnosed with cancer." });
 console.log("Masked text:", resp.data?.masked_text);
 console.log("Mapping:", resp.data?.mapping);
 ```
@@ -263,11 +263,15 @@ Mapping: {'[Person_1]': 'John', '[Email_1]': 'john@walled.ai', '[Diagnosis_1]': 
 ### Multi-turn Conversation PII Masking
 
 ```typescript
-const resp = await redact.guard([
-    { role: "user", content: "Hi there, my name is John Doe" },
-    { role: "assistant", content: "Hello John! How can I help you today?" },
-    { role: "user", content: "Can you email my friend Joseph with email: Joseph.cena@example.com, wishing him a speedy recovery from the viral fever?" }
-]);
+const redact = new WalledRedact({ apiKey: "YOUR_API_KEY" });
+
+const resp = await redact.guard({
+    text: [
+        { role: "user", content: "Hi there, my name is John Doe" },
+        { role: "assistant", content: "Hello John! How can I help you today?" },
+        { role: "user", content: "Can you email my friend Joseph with email: Joseph.cena@example.com, wishing him a speedy recovery from the viral fever?" }
+    ]
+});
 console.log("Masked text:", resp.data?.masked_text);
 console.log("Mapping:", resp.data?.mapping);
 ```

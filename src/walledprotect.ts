@@ -80,7 +80,7 @@ export class WalledProtect {
 
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': this.apiKey
+      'x-api-key': this.apiKey
     };
 
     try {
@@ -88,8 +88,6 @@ export class WalledProtect {
         headers,
         timeout: this.timeout
       });
-
-
       return response.data;
     } catch (error: any) {
       throw error;
