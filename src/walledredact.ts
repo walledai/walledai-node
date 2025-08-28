@@ -47,7 +47,7 @@ export class WalledRedact {
    * @returns Promise resolving to the API response
    */
   private async _httpApiCall(text: string | TextInput[]): Promise<any> {
-    const url = `${basUrl}/pii/encrypt`;
+    const url = `${basUrl}/walled-redact`;
     const payload = {
       text: text
     };

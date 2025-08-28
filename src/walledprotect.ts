@@ -57,7 +57,7 @@ export class WalledProtect {
     this.retries = config?.retries || 3;
     this.timeout = config?.timeout || 20000;
     this.count = 1;
-    this.url = `${basUrl}/guardrail/moderate`;
+    this.url = `${basUrl}/walled-protect`;
   }
 
   /**
